@@ -217,7 +217,7 @@ canvas { display: block; width: 100%; height: auto; }
 
 <div class="download-bar">
   <input type="text" id="fileNameInput" class="filename-input"
-         placeholder="collage-2000x1000" maxlength="80" spellcheck="false">
+         placeholder="tulis nama file-nya di sini yes." maxlength="80" spellcheck="false">
   <button class="btn-save" id="btnSave" disabled>↓ Download JPEG</button>
 </div>
 
@@ -461,7 +461,7 @@ function renderEmpty() {
   ctx.font = '900 52px "Inter", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('UPLOAD 3–8 IMAGES TO BEGIN', CW / 2, CH / 2);
+  ctx.fillText('Drag and drop image-nya jangan di sini yes, di atas.', CW / 2, CH / 2);
 }
 
 // ── Mouse coord helpers ───────────────────────────────────────────────────────
@@ -826,7 +826,7 @@ btnShuffle.addEventListener('click', () => {
 
 btnSave.addEventListener('click', () => {
   render(-1, -1, true); // clean render (no highlights/selection)
-  const name = (fileNameInput.value.trim() || 'collage-2000x1000').replace(/\s+/g, '-');
+  const name = (fileNameInput.value.trim() || 'collage').replace(/\s+/g, '-');
   const a = document.createElement('a');
   a.href = canvas.toDataURL('image/jpeg', 0.92);
   a.download = `${name}.jpg`;
@@ -866,7 +866,7 @@ dropZone.addEventListener('drop', e => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.0';
+const APP_VERSION = 'v1.1';
 document.getElementById('appVersion').textContent = APP_VERSION;
 renderEmpty();
 updateUI();
