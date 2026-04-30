@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collage Maker — 2000×1000</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  background: #fff; color: #000;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 32px 20px 48px; gap: 16px;
+}
+header { text-align: center; }
+h1 {
+  font-size: 2rem; font-weight: 900; letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+.sub {
+  color: #999; font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px;
+}
+
+/* ── Drop zone ── */
+.drop-zone {
+  width: 100%; max-width: 880px;
+  border: 2px dashed #ccc;
+  padding: 20px 24px; text-align: center; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s; user-select: none;
+}
+.drop-zone:hover, .drop-zone.over { border-color: #000; background: #f5f5f5; }
+.drop-zone svg { display: block; margin: 0 auto 8px; }
+.drop-zone p { color: #999; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; }
+
+/* ── Thumbnails ── */
+.thumbs { display: flex; flex-wrap: wrap; gap: 6px; max-width: 880px; width: 100%; }
+.thumb-item { position: relative; width: 58px; height: 58px; flex-shrink: 0; }
+.thumb-item img {
+  width: 100%; height: 100%; object-fit: cover;
+  border: 2px solid #e0e0e0; display: block;
+}
+.thumb-rm {
+  position: absolute; top: -4px; right: -4px;
+  width: 16px; height: 16px;
+  background: #000; border: none; color: #fff;
+  font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  font-weight: 700;
+}
+.thumb-rm:hover { background: #333; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex; gap: 6px; align-items: center;
+  flex-wrap: wrap; justify-content: center;
+  max-width: 880px; width: 100%;
+}
+.mode-group {
+  display: flex; border: 2px solid #000; overflow: hidden;
+}
+.mode-group button {
+  border: none; padding: 8px 16px;
+  font-family: inherit; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: #fff; color: #999; cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.mode-group button.active { background: #000; color: #fff; }
+.mode-group button:first-child { border-right: 2px solid #000; }
+
+.status { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #bbb; flex: 1; text-align: right; }
+.status.ok   { color: #000; }
+.status.warn { color: #999; }
+
+button {
+  padding: 8px 18px; border: 2px solid #000;
+  cursor: pointer; font-family: inherit; font-size: 0.72rem;
+  font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  transition: background 0.1s, color 0.1s, transform 0.08s;
+}
+button:not(:disabled):active { transform: scale(0.97); }
+button:disabled { opacity: 0.2; cursor: default; }
+.btn-shuffle { background: #000; color: #fff; }
+.btn-shuffle:not(:disabled):hover { background: #333; border-color: #333; }
+.btn-save    { background: #fff; color: #000; }
+.btn-save:not(:disabled):hover { background: #000; color: #fff; }
+.btn-clear   { background: #fff; color: #000; }
+.btn-clear:not(:disabled):hover { background: #000; color: #fff; }
+
+/* ── Gap controls ── */
+.gap-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #999;
+}
+.gap-row input[type=color] {
+  width: 26px; height: 26px; border: 2px solid #000; padding: 0;
+  background: none; cursor: pointer;
+}
+.gap-row input[type=range] { width: 80px; accent-color: #000; }
+
+/* ── Canvas ── */
+.canvas-wrap {
+  width: 100%; max-width: 880px; overflow: hidden;
+  border: 2px solid #000; line-height: 0;
+}
+canvas { display: block; width: 100%; height: auto; }
+
+.hint {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #bbb;
+  max-width: 880px; text-align: center;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Collage Maker</h1>
+  <p class="sub">2000 × 1000 px &nbsp;·&nbsp; 72 PPI &nbsp;·&nbsp; 3–8 images</p>
+</header>
+
+<div class="drop-zone" id="dropZone">
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"
+       stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="3" y="3" width="18" height="18"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+  <p>Drop images here, or click to upload &nbsp;(3–8 images)</p>
+  <input type="file" id="fileInput" multiple accept="image/*" hidden>
+</div>
+
+<div class="thumbs" id="thumbs"></div>
+
+<div class="toolbar">
+  <div class="mode-group">
+    <button id="btnArrange" class="active" title="Drag cells to swap · Drag borders to resize frames">⟷ Arrange</button>
+    <button id="btnReframe" title="Drag to pan · Scroll to zoom · Double-click to reset">⊹ Reframe</button>
+  </div>
+  <button class="btn-shuffle" id="btnShuffle" disabled>⟳ Randomize</button>
+  <button class="btn-save"    id="btnSave"    disabled>↓ Download</button>
+  <button class="btn-clear"   id="btnClear"   disabled>✕ Clear</button>
+  <span class="status" id="statusEl"></span>
+</div>
+
+<div class="gap-row">
+  <label>Gap</label>
+  <input type="range" id="gapSize" min="0" max="30" value="0">
+  <span id="gapVal">0px</span>
+  <label>Color</label>
+  <input type="color" id="gapColor" value="#ffffff">
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="canvas" width="2000" height="1000"></canvas>
+</div>
+<p class="hint" id="hintEl">Arrange: drag cells to swap · drag borders to resize</p>
+
+<script>
+'use strict';
+const CW = 2000, CH = 1000;
+
+// ── BSP Tree ──────────────────────────────────────────────────────────────────
+// Leaf: { type:'l' }
+// Split: { type:'s', dir:'v'|'h', pos:0..1, a:Node, b:Node }
+
+function newLeaf() { return { type: 'l' }; }
+
+function buildTree(n, pw, ph) {
+  if (n === 1) return newLeaf();
+  const splitV = pw / ph > 1.8 ? true : ph / pw > 1.3 ? false : Math.random() > 0.42;
+  const pos    = 0.38 + Math.random() * 0.24;
+  const leftN  = Math.max(1, Math.min(n - 1, Math.round(n * pos)));
+  const [aPW, aPH] = splitV ? [pw * pos, ph]       : [pw, ph * pos];
+  const [bPW, bPH] = splitV ? [pw * (1-pos), ph]   : [pw, ph * (1-pos)];
+  return { type:'s', dir: splitV ? 'v' : 'h', pos,
+           a: buildTree(leftN, aPW, aPH), b: buildTree(n - leftN, bPW, bPH) };
+}
+
+function collectLeaves(node, out = []) {
+  if (node.type === 'l') out.push(node);
+  else { collectLeaves(node.a, out); collectLeaves(node.b, out); }
+  return out;
+}
+
+// Returns [{x,y,w,h,leaf}] with fractional coords 0..1
+function leavesRects(node, x, y, w, h, out = []) {
+  if (node.type === 'l') { out.push({ x, y, w, h, leaf: node }); return out; }
+  if (node.dir === 'v') {
+    leavesRects(node.a, x,             y, w * node.pos,       h, out);
+    leavesRects(node.b, x + w*node.pos, y, w * (1 - node.pos), h, out);
+  } else {
+    leavesRects(node.a, x, y,             w, h * node.pos,       out);
+    leavesRects(node.b, x, y + h*node.pos, w, h * (1 - node.pos), out);
+  }
+  return out;
+}
+
+// Returns split-line descriptors for resize hit-testing
+// Each: { x1,y1,x2,y2 in canvas px, node, bx,by,bw,bh in fractions }
+function collectSplitLines(node, x, y, w, h, out = []) {
+  if (node.type === 'l') return out;
+  if (node.dir === 'v') {
+    const sx = x + w * node.pos;
+    out.push({ x1: sx*CW, y1: y*CH, x2: sx*CW, y2: (y+h)*CH, node, bx:x, by:y, bw:w, bh:h });
+    collectSplitLines(node.a, x,             y, w*node.pos,       h, out);
+    collectSplitLines(node.b, x+w*node.pos,   y, w*(1-node.pos),   h, out);
+  } else {
+    const sy = y + h * node.pos;
+    out.push({ x1: x*CW, y1: sy*CH, x2: (x+w)*CW, y2: sy*CH, node, bx:x, by:y, bw:w, bh:h });
+    collectSplitLines(node.a, x, y,             w, h*node.pos,       out);
+    collectSplitLines(node.b, x, y+h*node.pos,   w, h*(1-node.pos),   out);
+  }
+  return out;
+}
+
+// ── App state ─────────────────────────────────────────────────────────────────
+let images  = [];
+let tree    = null;
+let cells   = [];      // {x,y,w,h frac, leaf}
+let pxCells = [];      // {x,y,w,h px with gap}
+let slines  = [];      // split lines
+// Per-leaf: { imgIdx, panX, panY, zoom }
+let leafMap = new Map();
+let mode    = 'arrange';
+let selCell = -1;
+let hovLine = null;    // currently hovered split line
+let hovCell = -1;      // currently hovered cell (for remove button)
+let drag    = null;
+// drag = { type:'swap',   from }
+// drag = { type:'resize', line, startMx, startMy, startPos }
+// drag = { type:'pan',    ci, leaf, startMx, startMy, startPX, startPY }
+let gapPx   = 0;
+let gapCol  = '#ffffff';
+let dropTarget = -1;  // cell index being hovered during a file drag
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const canvas     = document.getElementById('canvas');
+const ctx        = canvas.getContext('2d');
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const thumbsEl   = document.getElementById('thumbs');
+const btnShuffle = document.getElementById('btnShuffle');
+const btnSave    = document.getElementById('btnSave');
+const btnClear   = document.getElementById('btnClear');
+const btnArrange = document.getElementById('btnArrange');
+const btnReframe = document.getElementById('btnReframe');
+const statusEl   = document.getElementById('statusEl');
+const hintEl     = document.getElementById('hintEl');
+const gapSizeEl  = document.getElementById('gapSize');
+const gapValEl   = document.getElementById('gapVal');
+const gapColEl   = document.getElementById('gapColor');
+
+// ── Layout helpers ────────────────────────────────────────────────────────────
+function toPixCell(c) {
+  const h = gapPx / 2;
+  return { x: Math.round(c.x*CW + h), y: Math.round(c.y*CH + h),
+           w: Math.round(c.w*CW - gapPx), h: Math.round(c.h*CH - gapPx) };
+}
+
+function rebuildGeom() {
+  cells   = leavesRects(tree, 0, 0, 1, 1);
+  pxCells = cells.map(toPixCell);
+  slines  = collectSplitLines(tree, 0, 0, 1, 1);
+}
+
+function freshTree() {
+  tree = buildTree(images.length, CW, CH);
+  const leaves = collectLeaves(tree);
+  leafMap = new Map();
+  leaves.forEach((lf, i) => leafMap.set(lf, { imgIdx: i, panX: 0.5, panY: 0.5, zoom: 1.0 }));
+  selCell = -1;
+  rebuildGeom();
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function drawCellImage(img, dx, dy, dw, dh, panX, panY, zoom) {
+  const ia = img.naturalWidth / img.naturalHeight;
+  const ca = dw / dh;
+  let sw, sh;
+  // zoom >= 1: zoom-in (sample a smaller region of the image)
+  if (ia > ca) { sh = img.naturalHeight / zoom; sw = sh * ca; }
+  else         { sw = img.naturalWidth  / zoom; sh = sw / ca; }
+  const sx = (img.naturalWidth  - sw) * panX;
+  const sy = (img.naturalHeight - sh) * panY;
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function render(srcCell = -1, dstCell = -1, clean = false) {
+  ctx.fillStyle = gapCol;
+  ctx.fillRect(0, 0, CW, CH);
+
+  for (let i = 0; i < pxCells.length; i++) {
+    const pc = pxCells[i];
+    const st = leafMap.get(cells[i].leaf);
+    const img = images[st.imgIdx];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pc.x, pc.y, pc.w, pc.h);
+    ctx.clip();
+    drawCellImage(img, pc.x, pc.y, pc.w, pc.h, st.panX, st.panY, st.zoom);
+
+    if (!clean) {
+      if (i === srcCell) {
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(pc.x, pc.y, pc.w, pc.h);
+      } else if (i === dstCell) {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(pc.x, pc.y, pc.w, pc.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(pc.x+4, pc.y+4, pc.w-8, pc.h-8);
+      }
+      if (mode === 'reframe' && i === selCell) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(pc.x+4, pc.y+4, pc.w-8, pc.h-8);
+      }
+    }
+    ctx.restore();
+  }
+
+  // Draw file-drop target highlight
+  if (!clean && dropTarget >= 0 && dropTarget < pxCells.length) {
+    const pc = pxCells[dropTarget];
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pc.x, pc.y, pc.w, pc.h); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(pc.x, pc.y, pc.w, pc.h);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 10;
+    ctx.setLineDash([28, 14]);
+    ctx.strokeRect(pc.x + 5, pc.y + 5, pc.w - 10, pc.h - 10);
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Draw remove button on hovered cell
+  if (!clean && hovCell >= 0 && hovCell < pxCells.length) {
+    const pc = pxCells[hovCell];
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pc.x, pc.y, pc.w, pc.h); ctx.clip();
+    // Button background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(pc.x + pc.w - RM, pc.y, RM, RM);
+    // × drawn as two lines
+    const cx = pc.x + pc.w - RM / 2, cy = pc.y + RM / 2, s = RM * 0.22;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = RM * 0.13;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s, cy + s);
+    ctx.moveTo(cx + s, cy - s); ctx.lineTo(cx - s, cy + s);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw active/hovered border hint
+  if (!clean) {
+    const ln = drag?.type === 'resize' ? drag.line : hovLine;
+    if (ln) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 6;
+      ctx.setLineDash([18, 10]);
+      ctx.beginPath();
+      ctx.moveTo(ln.x1, ln.y1);
+      ctx.lineTo(ln.x2, ln.y2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+}
+
+function renderEmpty() {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, CW, CH);
+  ctx.strokeStyle = '#f0f0f0';
+  ctx.lineWidth = 2;
+  for (let x = 0; x <= CW; x += 100) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CH); ctx.stroke();
+  }
+  for (let y = 0; y <= CH; y += 100) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CW, y); ctx.stroke();
+  }
+  ctx.fillStyle = '#ccc';
+  ctx.font = '900 52px "Inter", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('UPLOAD 3–8 IMAGES TO BEGIN', CW / 2, CH / 2);
+}
+
+// ── Mouse coord helpers ───────────────────────────────────────────────────────
+function toCanvasXY(e) {
+  const r = canvas.getBoundingClientRect();
+  return { mx: (e.clientX - r.left) / r.width * CW,
+           my: (e.clientY - r.top)  / r.height * CH };
+}
+
+function borderTol() {
+  // 9 screen pixels, expressed in canvas pixels
+  return 9 * (CW / canvas.getBoundingClientRect().width);
+}
+
+function hitLine(mx, my) {
+  const tol = borderTol();
+  for (const ln of slines) {
+    if (ln.node.dir === 'v') {
+      if (Math.abs(mx - ln.x1) < tol && my >= ln.y1 && my <= ln.y2) return ln;
+    } else {
+      if (Math.abs(my - ln.y1) < tol && mx >= ln.x1 && mx <= ln.x2) return ln;
+    }
+  }
+  return null;
+}
+
+function cellAt(mx, my) {
+  return pxCells.findIndex(c => mx >= c.x && mx < c.x+c.w && my >= c.y && my < c.y+c.h);
+}
+
+const RM = 80; // remove button size in canvas pixels
+
+function isOverRmBtn(mx, my, ci) {
+  const c = pxCells[ci];
+  return mx >= c.x + c.w - RM && my >= c.y && my < c.y + RM;
+}
+
+function removeLeafFromTree(node, leaf) {
+  if (node.type === 'l') return node === leaf ? null : node;
+  const newA = removeLeafFromTree(node.a, leaf);
+  const newB = removeLeafFromTree(node.b, leaf);
+  if (newA === null) return newB;
+  if (newB === null) return newA;
+  node.a = newA; node.b = newB;
+  return node;
+}
+
+function removeCell(ci) {
+  const leaf   = cells[ci].leaf;
+  const imgIdx = leafMap.get(leaf).imgIdx;
+  images.splice(imgIdx, 1);
+  leafMap.delete(leaf);
+  hovCell = -1; selCell = -1;
+
+  if (images.length < 3) {
+    tree = null; cells = []; pxCells = []; slines = []; leafMap = new Map();
+    renderEmpty(); updateUI(); return;
+  }
+
+  // Decrement imgIdx for every remaining leaf whose image shifted
+  for (const st of leafMap.values()) { if (st.imgIdx > imgIdx) st.imgIdx--; }
+
+  tree = removeLeafFromTree(tree, leaf);
+  rebuildGeom();
+  render();
+  updateUI();
+}
+
+// ── Mouse events ──────────────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  if (!tree) return;
+  const { mx, my } = toCanvasXY(e);
+
+  // Remove button takes priority in all modes
+  const ciRm = cellAt(mx, my);
+  if (ciRm >= 0 && isOverRmBtn(mx, my, ciRm)) { removeCell(ciRm); return; }
+
+  if (mode === 'arrange') {
+    const ln = hitLine(mx, my);
+    if (ln) {
+      drag = { type:'resize', line:ln, startMx:mx, startMy:my, startPos:ln.node.pos };
+      hovLine = null;
+      canvas.style.cursor = ln.node.dir === 'v' ? 'col-resize' : 'row-resize';
+      return;
+    }
+    const ci = cellAt(mx, my);
+    if (ci >= 0) {
+      drag = { type:'swap', from:ci };
+      render(ci, -1);
+    }
+  } else {
+    const ci = cellAt(mx, my);
+    if (ci < 0) { selCell = -1; render(); return; }
+    const lf = cells[ci].leaf;
+    const st = leafMap.get(lf);
+    selCell = ci;
+    drag = { type:'pan', ci, lf, startMx:mx, startMy:my, startPX:st.panX, startPY:st.panY };
+    render(ci, -1);
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!tree) return;
+  const { mx, my } = toCanvasXY(e);
+
+  if (!drag) {
+    const ci = cellAt(mx, my);
+    const cellChanged = ci !== hovCell;
+    hovCell = ci;
+
+    if (mode === 'arrange') {
+      const ln = hitLine(mx, my);
+      const lineChanged = ln !== hovLine;
+      hovLine = ln;
+      if (ci >= 0 && isOverRmBtn(mx, my, ci)) canvas.style.cursor = 'pointer';
+      else if (ln)  canvas.style.cursor = ln.node.dir === 'v' ? 'col-resize' : 'row-resize';
+      else if (ci >= 0) canvas.style.cursor = 'grab';
+      else          canvas.style.cursor = 'default';
+      if (cellChanged || lineChanged) render();
+    } else {
+      if (ci >= 0 && isOverRmBtn(mx, my, ci)) canvas.style.cursor = 'pointer';
+      else canvas.style.cursor = ci >= 0 ? 'crosshair' : 'default';
+      if (cellChanged) render(selCell, -1);
+    }
+    return;
+  }
+
+  if (drag.type === 'resize') {
+    const { line:ln, startMx, startMy, startPos } = drag;
+    let newPos;
+    if (ln.node.dir === 'v') {
+      newPos = Math.max(0.07, Math.min(0.93, startPos + (mx - startMx) / (ln.bw * CW)));
+    } else {
+      newPos = Math.max(0.07, Math.min(0.93, startPos + (my - startMy) / (ln.bh * CH)));
+    }
+    ln.node.pos = newPos;
+    rebuildGeom();
+    render();
+
+  } else if (drag.type === 'swap') {
+    const ci = cellAt(mx, my);
+    canvas.style.cursor = 'grabbing';
+    render(drag.from, ci >= 0 && ci !== drag.from ? ci : -1);
+
+  } else if (drag.type === 'pan') {
+    const { ci, lf, startMx, startMy, startPX, startPY } = drag;
+    const pc  = pxCells[ci];
+    const st  = leafMap.get(lf);
+    const img = images[st.imgIdx];
+    const ia  = img.naturalWidth / img.naturalHeight;
+    const ca  = pc.w / pc.h;
+    let sw, sh;
+    if (ia > ca) { sh = img.naturalHeight / st.zoom; sw = sh * ca; }
+    else         { sw = img.naturalWidth  / st.zoom; sh = sw / ca; }
+    const rangeX = img.naturalWidth  - sw;
+    const rangeY = img.naturalHeight - sh;
+    // drag right → image shifts right → sample further left → panX decreases
+    st.panX = Math.max(0, Math.min(1, startPX - (mx - startMx) * (sw / pc.w) / (rangeX || 1)));
+    st.panY = Math.max(0, Math.min(1, startPY - (my - startMy) * (sh / pc.h) / (rangeY || 1)));
+    if (!rangeX) st.panX = 0.5;
+    if (!rangeY) st.panY = 0.5;
+    render(selCell, -1);
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!drag) return;
+  if (drag.type === 'swap') {
+    const { mx, my } = toCanvasXY(e);
+    const ci = cellAt(mx, my);
+    if (ci >= 0 && ci !== drag.from) {
+      const stA = leafMap.get(cells[drag.from].leaf);
+      const stB = leafMap.get(cells[ci].leaf);
+      [stA.imgIdx, stB.imgIdx] = [stB.imgIdx, stA.imgIdx];
+      // Reset pan/zoom for both swapped cells
+      stA.panX = stA.panY = stB.panX = stB.panY = 0.5;
+      stA.zoom = stB.zoom = 1.0;
+    }
+    canvas.style.cursor = 'grab';
+  }
+  drag = null;
+  render(mode === 'reframe' ? selCell : -1, -1);
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hovLine = null; hovCell = -1;
+  canvas.style.cursor = 'default';
+  if (drag?.type === 'swap' || drag?.type === 'resize') { drag = null; render(); }
+  else if (drag) drag = null;
+});
+
+// ── Per-block file drag-and-drop ──────────────────────────────────────────────
+canvas.addEventListener('dragover', e => {
+  e.preventDefault();
+  if (!tree) return;
+  const { mx, my } = toCanvasXY(e);
+  const ci = cellAt(mx, my);
+  if (ci !== dropTarget) { dropTarget = ci; render(); }
+});
+
+canvas.addEventListener('dragleave', () => {
+  if (dropTarget < 0) return;
+  dropTarget = -1;
+  if (tree) render(); else renderEmpty();
+});
+
+canvas.addEventListener('drop', e => {
+  e.preventDefault();
+  const ci = dropTarget;
+  dropTarget = -1;
+  if (!tree) { addImages(e.dataTransfer.files); return; }
+  if (ci < 0) { render(); return; }
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) { render(); return; }
+  const leaf = cells[ci].leaf;
+  const st   = leafMap.get(leaf);
+  loadFile(files[0]).then(img => {
+    images[st.imgIdx] = img;
+    st.panX = st.panY = 0.5;
+    st.zoom = 1.0;
+    render();
+    updateUI();
+  }).catch(console.error);
+});
+
+// Scroll to zoom in reframe mode
+canvas.addEventListener('wheel', e => {
+  if (mode !== 'reframe' || !tree) return;
+  e.preventDefault();
+  const { mx, my } = toCanvasXY(e);
+  const ci = cellAt(mx, my);
+  if (ci < 0) return;
+  selCell = ci;
+  const st = leafMap.get(cells[ci].leaf);
+  // scroll down = zoom in further, up = zoom out toward 1.0
+  const factor = e.deltaY > 0 ? 1.12 : 1 / 1.12;
+  st.zoom = Math.max(1.0, Math.min(5.0, st.zoom * factor));
+  render(selCell, -1);
+}, { passive: false });
+
+// Double-click to reset pan/zoom on a cell
+canvas.addEventListener('dblclick', e => {
+  if (mode !== 'reframe' || !tree) return;
+  const { mx, my } = toCanvasXY(e);
+  const ci = cellAt(mx, my);
+  if (ci < 0) return;
+  const st = leafMap.get(cells[ci].leaf);
+  st.panX = st.panY = 0.5;
+  st.zoom = 1.0;
+  selCell = ci;
+  render(selCell, -1);
+});
+
+// ── Image loading ─────────────────────────────────────────────────────────────
+function loadFile(f) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload  = () => res(img);
+    img.onerror = () => rej(new Error(f.name));
+    img.src = url;
+  });
+}
+
+async function addImages(files) {
+  const slots = 8 - images.length;
+  if (slots <= 0) return;
+  const batch = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, slots);
+  if (!batch.length) return;
+  try {
+    const loaded = await Promise.all(batch.map(loadFile));
+    images.push(...loaded);
+    if (images.length >= 3) freshTree();
+    else renderEmpty();
+    updateUI();
+  } catch (err) { console.error(err); }
+}
+
+function removeImage(idx) {
+  images.splice(idx, 1);
+  if (images.length >= 3) freshTree();
+  else { tree = null; cells = []; pxCells = []; slines = []; leafMap = new Map(); selCell = -1; renderEmpty(); }
+  updateUI();
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function updateUI() {
+  const n = images.length, valid = n >= 3 && n <= 8;
+  btnShuffle.disabled = btnSave.disabled = !valid;
+  btnClear.disabled = !n;
+  statusEl.textContent = !n ? '' : !valid ? `${n} / 3 minimum` : `${n} image${n>1?'s':''} · ready`;
+  statusEl.className = !n ? 'status' : !valid ? 'status warn' : 'status ok';
+
+  thumbsEl.innerHTML = '';
+  images.forEach((img, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-item';
+    const t = document.createElement('img');
+    t.src = img.src; t.title = `Image ${i+1}`;
+    const btn = document.createElement('button');
+    btn.className = 'thumb-rm'; btn.textContent = '×'; btn.title = 'Remove';
+    btn.addEventListener('click', ev => { ev.stopPropagation(); removeImage(i); });
+    wrap.append(t, btn);
+    thumbsEl.append(wrap);
+  });
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+btnArrange.addEventListener('click', () => {
+  mode = 'arrange';
+  btnArrange.classList.add('active');
+  btnReframe.classList.remove('active');
+  selCell = -1;
+  hintEl.textContent = 'Arrange: drag cells to swap · drag borders to resize frames';
+  if (tree) render();
+});
+
+btnReframe.addEventListener('click', () => {
+  mode = 'reframe';
+  btnReframe.classList.add('active');
+  btnArrange.classList.remove('active');
+  hovLine = null;
+  hintEl.textContent = 'Reframe: drag image to pan · scroll to zoom · double-click to reset';
+  if (tree) render();
+});
+
+btnShuffle.addEventListener('click', () => {
+  if (images.length < 3) return;
+  freshTree();
+  // Shuffle image assignment across leaves
+  const leaves = collectLeaves(tree);
+  const idxs = leaves.map(lf => leafMap.get(lf).imgIdx).sort(() => Math.random() - 0.5);
+  leaves.forEach((lf, i) => { leafMap.get(lf).imgIdx = idxs[i]; });
+  render();
+});
+
+btnSave.addEventListener('click', () => {
+  render(-1, -1, true); // clean render (no highlights/selection)
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'collage-2000x1000.png';
+  a.click();
+  render(mode === 'reframe' ? selCell : -1, -1); // restore
+});
+
+btnClear.addEventListener('click', () => {
+  images = []; tree = null; cells = []; pxCells = []; slines = [];
+  leafMap = new Map(); selCell = -1; hovCell = -1; drag = null; hovLine = null; dropTarget = -1;
+  renderEmpty(); updateUI();
+});
+
+gapSizeEl.addEventListener('input', () => {
+  gapPx = parseInt(gapSizeEl.value, 10);
+  gapValEl.textContent = `${gapPx}px`;
+  if (tree) { rebuildGeom(); render(); } else renderEmpty();
+});
+
+gapColEl.addEventListener('input', () => {
+  gapCol = gapColEl.value;
+  if (tree) render(); else renderEmpty();
+});
+
+dropZone.addEventListener('click', () => { if (images.length < 8) fileInput.click(); });
+fileInput.addEventListener('change', e => { addImages(e.target.files); fileInput.value = ''; });
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over'); addImages(e.dataTransfer.files);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderEmpty();
+updateUI();
+</script>
+</body>
+</html>
