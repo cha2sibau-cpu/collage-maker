@@ -117,10 +117,27 @@ button:not(:disabled):active { transform: scale(0.97); }
 button:disabled { opacity: 0.2; cursor: default; }
 .btn-shuffle { background: #000; color: #fff; }
 .btn-shuffle:not(:disabled):hover { background: #333; border-color: #333; }
-.btn-save    { background: #fff; color: #000; }
-.btn-save:not(:disabled):hover { background: #000; color: #fff; }
-.btn-clear   { background: #fff; color: #000; }
-.btn-clear:not(:disabled):hover { background: #000; color: #fff; }
+.btn-clear   { background: #c00; color: #fff; border-color: #c00; }
+.btn-clear:not(:disabled):hover { background: #900; border-color: #900; }
+
+/* ── Download bar ── */
+.download-bar {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; max-width: 880px;
+}
+.filename-input {
+  flex: 1; padding: 10px 14px; border: 2px solid #000;
+  font-family: inherit; font-size: 0.9rem; font-weight: 600;
+  letter-spacing: 0.05em; outline: none; color: #000;
+  transition: border-color 0.1s;
+}
+.filename-input::placeholder { color: #ccc; font-weight: 400; }
+.filename-input:focus { border-color: #000; }
+.btn-save {
+  padding: 10px 23px; font-size: 0.9rem;
+  background: #000; color: #fff; border-color: #000; white-space: nowrap;
+}
+.btn-save:not(:disabled):hover { background: #333; border-color: #333; }
 
 /* ── Gap controls ── */
 .gap-row {
@@ -181,7 +198,6 @@ canvas { display: block; width: 100%; height: auto; }
     <button id="btnZoomIn"  disabled title="Zoom in selected cell">+ Zoom</button>
   </div>
   <button class="btn-shuffle" id="btnShuffle" disabled>⟳ Randomize</button>
-  <button class="btn-save"    id="btnSave"    disabled>↓ Download</button>
   <button class="btn-clear"   id="btnClear"   disabled>✕ Clear</button>
   <span class="status" id="statusEl"></span>
 </div>
@@ -198,6 +214,17 @@ canvas { display: block; width: 100%; height: auto; }
   <canvas id="canvas" width="2000" height="1000"></canvas>
 </div>
 <p class="hint" id="hintEl">Arrange: drag cells to swap · drag borders to resize</p>
+
+<div class="download-bar">
+  <input type="text" id="fileNameInput" class="filename-input"
+         placeholder="collage-2000x1000" maxlength="80" spellcheck="false">
+  <button class="btn-save" id="btnSave" disabled>↓ Download JPEG</button>
+</div>
+
+<footer>
+  <span>Developed by HIRA Imaji, 2026</span>
+  <span id="appVersion"></span>
+</footer>
 
 <script>
 'use strict';
@@ -284,8 +311,9 @@ const dropZone   = document.getElementById('dropZone');
 const fileInput  = document.getElementById('fileInput');
 const thumbsEl   = document.getElementById('thumbs');
 const btnShuffle = document.getElementById('btnShuffle');
-const btnSave    = document.getElementById('btnSave');
-const btnClear   = document.getElementById('btnClear');
+const btnSave       = document.getElementById('btnSave');
+const btnClear      = document.getElementById('btnClear');
+const fileNameInput = document.getElementById('fileNameInput');
 const btnArrange = document.getElementById('btnArrange');
 const btnReframe = document.getElementById('btnReframe');
 const btnZoomOut = document.getElementById('btnZoomOut');
@@ -798,9 +826,10 @@ btnShuffle.addEventListener('click', () => {
 
 btnSave.addEventListener('click', () => {
   render(-1, -1, true); // clean render (no highlights/selection)
+  const name = (fileNameInput.value.trim() || 'collage-2000x1000').replace(/\s+/g, '-');
   const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'collage-2000x1000.png';
+  a.href = canvas.toDataURL('image/jpeg', 0.92);
+  a.download = `${name}.jpg`;
   a.click();
   render(mode === 'reframe' ? selCell : -1, -1); // restore
 });
@@ -822,6 +851,12 @@ gapColEl.addEventListener('input', () => {
   if (tree) render(); else renderEmpty();
 });
 
+fileNameInput.addEventListener('input', () => {
+  const pos = fileNameInput.selectionStart;
+  fileNameInput.value = fileNameInput.value.replace(/ /g, '-');
+  fileNameInput.setSelectionRange(pos, pos);
+});
+
 dropZone.addEventListener('click', () => { if (images.length < 8) fileInput.click(); });
 fileInput.addEventListener('change', e => { addImages(e.target.files); fileInput.value = ''; });
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
@@ -836,11 +871,5 @@ document.getElementById('appVersion').textContent = APP_VERSION;
 renderEmpty();
 updateUI();
 </script>
-
-<footer>
-  <span>Developed by HIRA Imaji, 2026</span>
-  <span id="appVersion"></span>
-</footer>
-
 </body>
 </html>
