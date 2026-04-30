@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Collage Maker — 2000×1000</title>
+<title>HIRA Collage Maker 2000</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
 
@@ -15,7 +16,11 @@ body {
   display: flex; flex-direction: column; align-items: center;
   padding: 32px 20px 48px; gap: 16px;
 }
-header { text-align: center; }
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 880px;
+}
+.header-left { text-align: left; }
 h1 {
   font-size: 2rem; font-weight: 900; letter-spacing: -0.04em;
   text-transform: uppercase;
@@ -23,6 +28,16 @@ h1 {
 .sub {
   color: #999; font-size: 0.72rem; font-weight: 600;
   letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px;
+}
+.header-logo { height: 36px; display: block; }
+
+/* ── Footer ── */
+footer {
+  width: 100%; max-width: 880px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #e0e0e0; padding-top: 14px; margin-top: 4px;
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #bbb;
 }
 
 /* ── Drop zone ── */
@@ -71,6 +86,21 @@ h1 {
 }
 .mode-group button.active { background: #000; color: #fff; }
 .mode-group button:first-child { border-right: 2px solid #000; }
+
+/* ── Zoom buttons ── */
+.zoom-group {
+  display: flex; border: 2px solid #000; overflow: hidden;
+}
+.zoom-group button {
+  border: none; padding: 8px 14px;
+  font-family: inherit; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: #fff; color: #000; cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.zoom-group button:first-child { border-right: 2px solid #000; }
+.zoom-group button:not(:disabled):hover { background: #000; color: #fff; }
+.zoom-group button:disabled { opacity: 0.2; cursor: default; }
 
 .status { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: #bbb; flex: 1; text-align: right; }
@@ -121,8 +151,11 @@ canvas { display: block; width: 100%; height: auto; }
 <body>
 
 <header>
-  <h1>Collage Maker</h1>
-  <p class="sub">2000 × 1000 px &nbsp;·&nbsp; 72 PPI &nbsp;·&nbsp; 3–8 images</p>
+  <div class="header-left">
+    <h1>Collage Maker</h1>
+    <p class="sub">2000 × 1000 px &nbsp;·&nbsp; 72 PPI &nbsp;·&nbsp; 3–8 images</p>
+  </div>
+  <img src="logo-hira.png" alt="HIRA" class="header-logo">
 </header>
 
 <div class="drop-zone" id="dropZone">
@@ -142,6 +175,10 @@ canvas { display: block; width: 100%; height: auto; }
   <div class="mode-group">
     <button id="btnArrange" class="active" title="Drag cells to swap · Drag borders to resize frames">⟷ Arrange</button>
     <button id="btnReframe" title="Drag to pan · Scroll to zoom · Double-click to reset">⊹ Reframe</button>
+  </div>
+  <div class="zoom-group">
+    <button id="btnZoomOut" disabled title="Zoom out selected cell">− Zoom</button>
+    <button id="btnZoomIn"  disabled title="Zoom in selected cell">+ Zoom</button>
   </div>
   <button class="btn-shuffle" id="btnShuffle" disabled>⟳ Randomize</button>
   <button class="btn-save"    id="btnSave"    disabled>↓ Download</button>
@@ -251,6 +288,8 @@ const btnSave    = document.getElementById('btnSave');
 const btnClear   = document.getElementById('btnClear');
 const btnArrange = document.getElementById('btnArrange');
 const btnReframe = document.getElementById('btnReframe');
+const btnZoomOut = document.getElementById('btnZoomOut');
+const btnZoomIn  = document.getElementById('btnZoomIn');
 const statusEl   = document.getElementById('statusEl');
 const hintEl     = document.getElementById('hintEl');
 const gapSizeEl  = document.getElementById('gapSize');
@@ -487,11 +526,12 @@ canvas.addEventListener('mousedown', e => {
     }
   } else {
     const ci = cellAt(mx, my);
-    if (ci < 0) { selCell = -1; render(); return; }
+    if (ci < 0) { selCell = -1; updateZoomButtons(); render(); return; }
     const lf = cells[ci].leaf;
     const st = leafMap.get(lf);
     selCell = ci;
     drag = { type:'pan', ci, lf, startMx:mx, startMy:my, startPX:st.panX, startPY:st.panY };
+    updateZoomButtons();
     render(ci, -1);
   }
 });
@@ -632,6 +672,7 @@ canvas.addEventListener('wheel', e => {
   // scroll down = zoom in further, up = zoom out toward 1.0
   const factor = e.deltaY > 0 ? 1.12 : 1 / 1.12;
   st.zoom = Math.max(1.0, Math.min(5.0, st.zoom * factor));
+  updateZoomButtons();
   render(selCell, -1);
 }, { passive: false });
 
@@ -645,6 +686,7 @@ canvas.addEventListener('dblclick', e => {
   st.panX = st.panY = 0.5;
   st.zoom = 1.0;
   selCell = ci;
+  updateZoomButtons();
   render(selCell, -1);
 });
 
@@ -685,6 +727,7 @@ function updateUI() {
   const n = images.length, valid = n >= 3 && n <= 8;
   btnShuffle.disabled = btnSave.disabled = !valid;
   btnClear.disabled = !n;
+  updateZoomButtons();
   statusEl.textContent = !n ? '' : !valid ? `${n} / 3 minimum` : `${n} image${n>1?'s':''} · ready`;
   statusEl.className = !n ? 'status' : !valid ? 'status warn' : 'status ok';
 
@@ -702,6 +745,12 @@ function updateUI() {
   });
 }
 
+// ── Zoom button state ────────────────────────────────────────────────────────
+function updateZoomButtons() {
+  const enabled = mode === 'reframe' && tree !== null && selCell >= 0;
+  btnZoomOut.disabled = btnZoomIn.disabled = !enabled;
+}
+
 // ── Buttons ───────────────────────────────────────────────────────────────────
 btnArrange.addEventListener('click', () => {
   mode = 'arrange';
@@ -709,6 +758,7 @@ btnArrange.addEventListener('click', () => {
   btnReframe.classList.remove('active');
   selCell = -1;
   hintEl.textContent = 'Arrange: drag cells to swap · drag borders to resize frames';
+  updateZoomButtons();
   if (tree) render();
 });
 
@@ -717,8 +767,23 @@ btnReframe.addEventListener('click', () => {
   btnReframe.classList.add('active');
   btnArrange.classList.remove('active');
   hovLine = null;
-  hintEl.textContent = 'Reframe: drag image to pan · scroll to zoom · double-click to reset';
+  hintEl.textContent = 'Reframe: click a cell, then drag to pan · scroll or ± buttons to zoom · double-click to reset';
+  updateZoomButtons();
   if (tree) render();
+});
+
+btnZoomOut.addEventListener('click', () => {
+  if (selCell < 0 || !tree) return;
+  const st = leafMap.get(cells[selCell].leaf);
+  st.zoom = Math.max(1.0, Math.min(5.0, st.zoom / 1.12));
+  render(selCell, -1);
+});
+
+btnZoomIn.addEventListener('click', () => {
+  if (selCell < 0 || !tree) return;
+  const st = leafMap.get(cells[selCell].leaf);
+  st.zoom = Math.max(1.0, Math.min(5.0, st.zoom * 1.12));
+  render(selCell, -1);
 });
 
 btnShuffle.addEventListener('click', () => {
@@ -766,8 +831,16 @@ dropZone.addEventListener('drop', e => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+const APP_VERSION = 'v1.0';
+document.getElementById('appVersion').textContent = APP_VERSION;
 renderEmpty();
 updateUI();
 </script>
+
+<footer>
+  <span>Developed by HIRA Imaji, 2026</span>
+  <span id="appVersion"></span>
+</footer>
+
 </body>
 </html>
